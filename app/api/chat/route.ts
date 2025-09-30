@@ -88,6 +88,7 @@ export async function POST(request: Request) {
         resolution
       );
 
+      // Always send sandbox info if it was just created
       if (!sandboxId && activeSandboxId && vncUrl) {
         async function* stream(): AsyncGenerator<SSEEvent<typeof model>> {
           yield {
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
 
         return createStreamingResponse(stream());
       } else {
+        // Even if sandbox already exists, stream the AI response
         return createStreamingResponse(streamer.stream({ messages, signal }));
       }
     } catch (error) {

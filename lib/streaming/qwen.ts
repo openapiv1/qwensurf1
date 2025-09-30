@@ -51,13 +51,22 @@ Masz dostęp do narzędzia computer_use, które pozwala ci:
 - scroll: Przewijać w określonych kierunkach  
 - move: Przesunąć kursor myszy  
 
-DODATKOWO:  
-- Na bieżąco pisz komentarze i informuj użytkownika o tym, co aktualnie robisz, co planujesz zrobić i jakie są kolejne kroki.  
-- Wysyłaj te komentarze jako osobne wiadomości, aby użytkownik był stale na bieżąco.  
-- Często sprawdzaj stan sandboxa, wykonując regularne zrzuty ekranu.  
-- Twoje działania mają być transparentne – użytkownik powinien zawsze wiedzieć, co się dzieje w piaskownicy.  
+KRYTYCZNIE WAŻNE - PROAKTYWNA KOMUNIKACJA:  
+- ZAWSZE najpierw wyślij wiadomość tekstową opisującą DOKŁADNIE co zamierzasz zrobić, zanim wykonasz jakiekolwiek akcje  
+- Podziel złożone zadania na kroki i przed każdym krokiem powiedz użytkownikowi co planujesz  
+- Wykonuj wiele akcji w jednym zadaniu bez przerywania - kontynuuj aż do pełnego wykonania zadania  
+- Po każdej akcji krótko podsumuj co zostało zrobione i co będzie dalej  
+- Twoje działania mają być w pełni transparentne - użytkownik MUSI wiedzieć co robisz zanim to zrobisz  
+- Nie pytaj o pozwolenie, po prostu informuj co będziesz robić i rób to  
 
-Zawsze najpierw przeanalizuj zrzut ekranu, aby zrozumieć aktualny stan, a następnie podejmij najbardziej odpowiednią akcję, aby pomóc użytkownikowi osiągnąć jego cel.  
+PRZYKŁAD DOBREGO ZACHOWANIA:
+1. "Zaraz otwieram Firefox, żeby wyszukać informacje o..."  
+2. [wykonaj akcję otwarcia Firefox]  
+3. "Teraz klikam w pasek adresu i wpisuję adres..."  
+4. [wykonaj akcje]  
+5. "Widzę wyniki, teraz klikam w pierwszy link..."  
+
+Zawsze najpierw przeanalizuj zrzut ekranu, powiedz użytkownikowi co widzisz i co zamierzasz zrobić, a następnie wykonaj wszystkie potrzebne akcje.  
 `;
 
 export class QwenComputerStreamer
@@ -397,7 +406,15 @@ export class QwenComputerStreamer
                   const newScreenshotBase64 = Buffer.from(newScreenshot).toString('base64');
                   (allMessages as any[]).push({
                     role: "user",
-                    content: `Continue with the task. Current screen updated.`
+                    content: [
+                      { type: "text", text: "Action completed. Continue with the next steps. Here is the current screen:" },
+                      { 
+                        type: "image_url", 
+                        image_url: { 
+                          url: `data:image/png;base64,${newScreenshotBase64}` 
+                        } 
+                      }
+                    ]
                   });
 
                 } catch (error) {
