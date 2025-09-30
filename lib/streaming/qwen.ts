@@ -366,7 +366,10 @@ export class QwenComputerStreamer
           }
 
           if (choice.finish_reason === "tool_calls" && toolCalls.length > 0) {
-            // Process tool calls
+            // Process ALL tool calls in sequence before taking screenshot
+            const processedToolCalls: any[] = [];
+            const toolResults: any[] = [];
+            
             for (const toolCall of toolCalls) {
               if (toolCall.function.name === "computer_use") {
                 try {
@@ -383,38 +386,17 @@ export class QwenComputerStreamer
                     type: SSEEventType.ACTION_COMPLETED,
                   };
 
-                  // Add the tool call and result to conversation
-                  (allMessages as any[]).push({
-                    role: "assistant",
-                    content: fullContent || "",
-                    tool_calls: [toolCall]
-                  });
-
+                  processedToolCalls.push(toolCall);
+                  
                   let resultContent = `Action ${args.action} completed`;
                   if (actionResult && actionResult.data.type === "computer_screenshot") {
                     resultContent = "Screenshot taken";
                   }
-
-                  (allMessages as any[]).push({
+                  
+                  toolResults.push({
                     role: "tool",
                     tool_call_id: toolCall.id,
                     content: resultContent
-                  });
-
-                  // Take a new screenshot after action and continue
-                  const newScreenshot = await this.desktop.screenshot();
-                  const newScreenshotBase64 = Buffer.from(newScreenshot).toString('base64');
-                  (allMessages as any[]).push({
-                    role: "user",
-                    content: [
-                      { type: "text", text: "Action completed. Continue with the next steps. Here is the current screen:" },
-                      { 
-                        type: "image_url", 
-                        image_url: { 
-                          url: `data:image/png;base64,${newScreenshotBase64}` 
-                        } 
-                      }
-                    ]
                   });
 
                 } catch (error) {
@@ -423,9 +405,43 @@ export class QwenComputerStreamer
                     type: SSEEventType.ERROR,
                     content: `Error executing action: ${error}`,
                   };
+                  
+                  toolResults.push({
+                    role: "tool",
+                    tool_call_id: toolCall.id,
+                    content: `Error: ${error}`
+                  });
                 }
               }
             }
+            
+            // Add the assistant message with ALL tool calls
+            (allMessages as any[]).push({
+              role: "assistant",
+              content: fullContent || "",
+              tool_calls: processedToolCalls
+            });
+            
+            // Add ALL tool results
+            toolResults.forEach(result => {
+              (allMessages as any[]).push(result);
+            });
+
+            // Take a new screenshot AFTER all actions are completed
+            const newScreenshot = await this.desktop.screenshot();
+            const newScreenshotBase64 = Buffer.from(newScreenshot).toString('base64');
+            (allMessages as any[]).push({
+              role: "user",
+              content: [
+                { type: "text", text: `All ${processedToolCalls.length} action(s) completed. Continue with the next steps. Here is the current screen:` },
+                { 
+                  type: "image_url", 
+                  image_url: { 
+                    url: `data:image/png;base64,${newScreenshotBase64}` 
+                  } 
+                }
+              ]
+            });
             
             // Continue the conversation
             toolCalls = [];
