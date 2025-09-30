@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { increaseTimeout, stopSandboxAction } from "@/app/actions";
+import { createSandbox, increaseTimeout, stopSandboxAction } from "@/app/actions";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatList } from "@/components/chat/message-list";
 import { ChatInput } from "@/components/chat/input";
@@ -64,6 +64,41 @@ export default function Home() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
+  }, []);
+
+  // Auto-create sandbox on page load
+  useEffect(() => {
+    const initSandbox = async () => {
+      if (!sandboxId && !isLoading) {
+        setIsLoading(true);
+        try {
+          const width =
+            iFrameWrapperRef.current?.clientWidth ||
+            (window.innerWidth < 768 ? window.innerWidth - 32 : 1024);
+          const height =
+            iFrameWrapperRef.current?.clientHeight ||
+            (window.innerWidth < 768
+              ? Math.min(window.innerHeight * 0.4, 400)
+              : 768);
+
+          const result = await createSandbox([width, height]);
+          if (result) {
+            handleSandboxCreated(result.sandboxId, result.vncUrl);
+          } else {
+            toast.error("Failed to create sandbox automatically");
+          }
+        } catch (error) {
+          console.error("Error creating sandbox on mount:", error);
+          toast.error("Failed to initialize sandbox");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // Delay to ensure iFrameWrapperRef is available
+    const timer = setTimeout(initSandbox, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const stopSandbox = async () => {
